@@ -1,109 +1,99 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabaseClient";
+import { useState } from "react";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
+export default function LandingPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState<string | null>(null);
 
-  // 🔹 Se já estiver logado, redireciona pro painel
-  useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        router.push("/painel");
-      }
-    };
-
-    checkSession();
-  }, [router]);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
+  async function handleCheckout(plan: "monthly" | "quarterly" | "semiannual") {
     try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      setLoading(plan);
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          email: "teste@teste.com", // futuramente pegamos o real
+        }),
       });
 
-      if (error) setMsg(error.message);
-      else router.push("/painel");
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url; // redireciona para o Stripe
+      } else {
+        alert("Erro: " + data.error);
+      }
+    } catch (err: any) {
+      alert("Erro inesperado: " + err.message);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
-      <div className="w-full max-w-md bg-gray-900 rounded-2xl p-6 border border-gray-700 shadow-xl">
-        {/* 🔹 "Logo" tipográfica elegante */}
-        <h1 className="text-3xl font-extrabold text-center mb-6 bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-lg">
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      {/* Hero */}
+      <section className="flex flex-col items-center justify-center text-center py-20 px-6">
+        <h1 className="text-4xl md:text-6xl font-extrabold text-blue-500">
           Comissões Pro 💥
         </h1>
+        <p className="mt-4 text-lg text-gray-300 max-w-2xl">
+          Analise seus relatórios da Shopee em segundos.  
+          Painel bonito, rápido e pronto para você vender mais.
+        </p>
+      </section>
 
-        <h2 className="text-xl font-semibold text-gray-100 mb-4 text-center">
-          Entrar
+      {/* Planos */}
+      <section className="px-6 max-w-5xl mx-auto py-16 grid md:grid-cols-3 gap-6">
+        {[
+          {
+            title: "Mensal",
+            price: "R$29/mês",
+            plan: "monthly" as const,
+          },
+          {
+            title: "Trimestral",
+            price: "R$79/trimestre",
+            plan: "quarterly" as const,
+          },
+          {
+            title: "Semestral",
+            price: "R$149/semestre",
+            plan: "semiannual" as const,
+          },
+        ].map(({ title, price, plan }) => (
+          <div
+            key={plan}
+            className="bg-gray-900 rounded-xl p-6 shadow flex flex-col items-center"
+          >
+            <h3 className="text-2xl font-bold mb-2">{title}</h3>
+            <p className="text-gray-400 mb-6">{price}</p>
+            <button
+              onClick={() => handleCheckout(plan)}
+              disabled={loading === plan}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold shadow w-full"
+            >
+              {loading === plan ? "Carregando..." : "Assinar agora 🚀"}
+            </button>
+          </div>
+        ))}
+      </section>
+
+      {/* CTA final */}
+      <section className="text-center py-20">
+        <h2 className="text-2xl font-bold">
+          Pronto para aumentar suas vendas?
         </h2>
-
-        <form onSubmit={handleLogin} className="space-y-3">
-          <input
-            className="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-gray-100"
-            placeholder="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-gray-100"
-            placeholder="senha"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          {msg && <p className="text-sm text-yellow-300">{msg}</p>}
-
-          <div className="flex gap-3">
-            <button
-              className="flex-1 px-4 py-2 rounded bg-blue-600 hover:bg-blue-500"
-              disabled={loading}
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/signup")}
-              className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
-            >
-              Criar conta
-            </button>
-          </div>
-
-          <div className="flex justify-between text-sm mt-2">
-            <button
-              type="button"
-              onClick={() => router.push("/forgot")}
-              className="text-gray-400 hover:text-gray-200"
-            >
-              Esqueceu a senha?
-            </button>
-          </div>
-        </form>
-      </div>
+        <button
+          onClick={() => handleCheckout("monthly")}
+          className="mt-6 px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold shadow"
+        >
+          Assinar agora 🚀
+        </button>
+      </section>
     </div>
   );
 }
-
